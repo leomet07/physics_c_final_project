@@ -1,9 +1,8 @@
 Web VPython 3.2
 
 t=0
-dt = 0.01
+dt = 0.05
 g = 9.81
-coeff_friction = 0.2
 
 xpos_graph = graph(width=350, height=250, xtitle=("Time"), ytitle=("Xpos"), align='left')
 xpos_graph_dots =gdots(color=color.red, graph=xpos_graph)
@@ -13,6 +12,8 @@ wheel_radius = wheel_diameter * 0.5
 wheel_weight = 1 # kg
 
 static_friction_constant = 0.65 # for a good tire: https://www.bicyclerollingresistance.com/road-bike-reviews 
+kinetic_friction_constant = 0.3 # for a good tire: https://www.bicyclerollingresistance.com/road-bike-reviews 
+
 
 class MyWheel():
     def __init__(self, a_vel, mass, radius, frame_com_pos, offset_to_com):
@@ -50,31 +51,39 @@ class Frame():
         self.frame_mass = frame_mass
         
         wheel_rads_per_s = bike_speed / (wheel_radius)
-        self.front_wheel = MyWheel(vec(0,0,-wheel_rads_per_s), wheel_weight, wheel_radius, self.visual.pos, vec(0.5, -0.5, 0)) # initial case, match wheel speed to bike translational speed
-        self.back_wheel = MyWheel(vec(0,0,-wheel_rads_per_s), wheel_weight, wheel_radius, self.visual.pos, vec(-0.5, -0.5, 0))
+        self.front_wheel = MyWheel(vec(0,0,-wheel_rads_per_s), wheel_weight, wheel_radius, self.visual.pos, vec(0.5, -0.25, 0)) # initial case, match wheel speed to bike translational speed
+        self.back_wheel = MyWheel(vec(0,0,-wheel_rads_per_s), wheel_weight, wheel_radius, self.visual.pos, vec(-0.5, -0.25, 0))
     
     def update(self):
-        self.visual.pos += self.com_vel * dt # hard coded xvel
+        self.visual.pos += self.com_vel * dt
         
         total_mass = self.frame_mass + self.front_wheel.mass + self.back_wheel.mass
         
-        braking_force = 40 * 6 # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
-        max_static_friction_force = total_mass * 0.5 * g * static_friction_constant
-        print("max_static_friction_force:" , max_static_friction_force)
-        if braking_force > max_static_friction_force:
-            print("Sliding!")
-        static_friction_force = braking_force
+        braking_force = 40 * 6 * max(1, t) # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
         
-        if self.com_vel.x <= 0: # if less than 0.18kmh, basically 0
-            braking_force = 0
+        max_static_friction_force = total_mass * 0.5 * g * static_friction_constant
+        kinetic_friction_force = total_mass * 0.5 * g * kinetic_friction_constant
+        
+        
+        if self.com_vel.x <= 0: # if not moving (less than 0.18kmh)
+            applied_force_on_front_wheel = 0
             self.com_vel.x = 0 # keep it at zero forever
+            self.front_wheel.sphere.color = color.cyan
+        else:
+            if braking_force < max_static_friction_force:
+                applied_force_on_front_wheel = braking_force # this is supplied by static friction
+            else:
+                applied_force_on_front_wheel = kinetic_friction_force
+#                print(f"Sliding at t={t}")
+                self.front_wheel.sphere.color = color.yellow
+                
         # sources abt mechanichal advatnage: https://www.sheldonbrown.com/cantilever-geometry.html; https://forum.cyclinguk.org/viewtopic.php?t=127211
-        sum_of_all_torques_on_front_wheel = -1 * static_friction_force * self.front_wheel.radius # braking force exerted on rim
+        sum_of_all_torques_on_front_wheel = -1 * applied_force_on_front_wheel * self.front_wheel.radius # braking force exerted on rim
         change_in_v = (sum_of_all_torques_on_front_wheel * dt) / (total_mass * self.front_wheel.radius)  # times negative one cuz wheel pushes on ground, but ground pushes back in opposite direction
         self.com_vel = self.com_vel + vec(change_in_v, 0, 0)
         if self.com_vel.mag != 0:
             pass
-#            print("Position:" , self.visual.pos, "Change in v: ", change_in_v, "Com vel: ", self.com_vel)
+#        print("Applied force on front: ",applied_force_on_front_wheel )
         
         # update self, self_com
         self.front_wheel.update(self.visual.pos)
@@ -82,7 +91,19 @@ class Frame():
         
 bike_speed_kmh = 30 # kmh
 myframe = Frame(vec(0,0.5,0), bike_speed_kmh, 80)
-scene.camera.pos=vector(2, 5, 15) # This tells VPython to view the scene from the position (0,5,10)
+scene.camera.pos=vector(8, 5, 12)
+
+# draw grid
+grid_line_x_spacing=5
+for x in range(0, 50, grid_line_x_spacing):
+    if x == 0:
+        linecolor = color.blue
+    else:
+        linecolor = color.white
+    curve(pos=[vec(x, -1, -0.001), vec(x, 1, -0.001)], color=linecolor)
+    label(pos=vec(x, -1, 0), text=f"{x}m", xoffset=0, yoffset=0, space=30, height=16, border=4, font='sans')
+# draw floor
+curve(pos=[vec(-100, 0, 0), vec(200, 0, 0)], color=color.white)
 
 while True:
     rate(1/dt)
