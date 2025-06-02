@@ -38,27 +38,13 @@ class MyWheel():
         self.a_vel = a_vel
         self.mass = mass
         self.radius = radius
-        self.inertia = self.mass * (self.radius**2)
         self.offset_to_com = offset_to_com
         
         self.sphere = sphere(pos=frame_com_pos+offset_to_com, radius=self.radius, color=color.cyan)
-    
-    def calculate_a_acc(self, net_torque): # in z land bc rotatioin of wheel along x
-        return net_torque * (1.0/self.inertia)
-    
-    def calculate_tangential_velocity(self):
-        return vec(self.a_vel.mag * self.radius, 0, 0)# convert z axis rotations to x axis movement
-    
+
     def update(self, frame_com_pos):
         self.sphere.pos = frame_com_pos+self.offset_to_com
-        
-        braking_force_mag = 0 # in newtons, this is an arbitrary braking force, function of hand squeeze
-        friction_torque = (-1) * (braking_force_mag) * hat(self.a_vel) # -1 to oppose, hat of a zero vector is just zero! therefore friction stops when a_vel=0
-        net_torque = friction_torque
-        
-        a_acc = self.calculate_a_acc(net_torque)
-        
-        self.a_vel = self.a_vel + a_acc*dt
+
 
 class Frame():
 
@@ -90,23 +76,16 @@ class Frame():
         return vec(0,self.total_mass*g*((bcond/L)+((static_friction_constant*h*pos_or_neg)/L)),0)
     
     def update(self):
-        print("Starting to update")
         self.visual.pos += self.com_vel * dt
-        
-        
-        print("pre normal force calculation")
 
         Nf = self.wheelNormalForce("front")
         Nb = self.wheelNormalForce("back")
-        print("post normal force calculation")
-
-        
+   
         braking_force = 40 * 6 * max(1, t) # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
         
         max_static_friction_force_front = (Nf * static_friction_constant).mag
         kinetic_friction_force_front = (Nf * kinetic_friction_constant).mag
-        
-        
+         
         if self.com_vel.x <= 0: # if not moving (less than 0.18kmh)
             applied_friction_force_on_front_wheel = 0
             self.com_vel.x = 0 # keep it at zero forever
@@ -118,15 +97,7 @@ class Frame():
                 applied_friction_force_on_front_wheel = kinetic_friction_force_front
 #                print(f"Sliding at t={t}")
                 self.front_wheel.sphere.color = color.yellow
-                
-        # sources abt mechanichal advatnage: https://www.sheldonbrown.com/cantilever-geometry.html; https://forum.cyclinguk.org/viewtopic.php?t=127211
-        #sum_of_all_torques_on_front_wheel = -1 * applied_force_on_front_wheel * self.front_wheel.radius # braking force exerted on rim
-        #change_in_v = (sum_of_all_torques_on_front_wheel * dt) / (total_mass * self.front_wheel.radius)  # times negative one cuz wheel pushes on ground, but ground pushes back in opposite direction
-        #self.com_vel = self.com_vel + vec(change_in_v, 0, 0)
-        #if self.com_vel.mag != 0:
-            #pass
-#        print("Applied force on front: ",applied_force_on_front_wheel )\
-
+        
         # compute sum of all forces on system [NOTE: NO FRICTION FORCE MATCHING BRAKING FORCE ON BACK WHEEL)
         sum_of_all_forces_on_system = Nf + Nb + vec(0,-self.total_mass*g,0) + vec(-applied_friction_force_on_front_wheel,0,0)
         a = sum_of_all_forces_on_system / self.total_mass
@@ -136,8 +107,6 @@ class Frame():
         # update self, self_com
         self.front_wheel.update(self.visual.pos)
         self.back_wheel.update(self.visual.pos)
-        print("Ending to update")
-
         
 bike_speed_kmh = 30 # kmh
 myframe = Frame(vec(0,0.5,0), bike_speed_kmh, 80, 1, 0.5)
