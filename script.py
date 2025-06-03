@@ -81,7 +81,7 @@ class Frame():
         Nf = self.wheelNormalForce("front")
         Nb = self.wheelNormalForce("back")
    
-        braking_force = 40 * 6 * max(1, t) # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
+        braking_force = 100 * 6 * max(0.5, t) # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
         
         max_static_friction_force_front = (Nf * static_friction_constant).mag
         kinetic_friction_force_front = (Nf * kinetic_friction_constant).mag
@@ -97,12 +97,27 @@ class Frame():
                 applied_friction_force_on_front_wheel = kinetic_friction_force_front
 #                print(f"Sliding at t={t}")
                 self.front_wheel.sphere.color = color.yellow
+                checkToFlip = True # at this instant, you HAVE locked ur front wheel
         
         # compute sum of all forces on system [NOTE: NO FRICTION FORCE MATCHING BRAKING FORCE ON BACK WHEEL)
         sum_of_all_forces_on_system = Nf + Nb + vec(0,-self.total_mass*g,0) + vec(-applied_friction_force_on_front_wheel,0,0)
         a = sum_of_all_forces_on_system / self.total_mass
         change_in_v = a * dt
         self.com_vel = self.com_vel + change_in_v        
+        
+        # this is sum of all torques abt pivot at right wheel. should not always be applied...
+        # Nf: r x F = 0. Nb: does apply torque. applied force also matters...?
+        horiz_to_front_contact_patch = (self.front_wheel.sphere.pos - vec(0, self.front_wheel.radius, 0))
+        sum_of_all_torques_on_system = cross(self.back_wheel.sphere.pos - horiz_to_front_contact_patch, Nb) + cross(self.visual.pos - (self.front_wheel.sphere.pos - vec(0, self.front_wheel.radius, 0)),vec(0,-self.total_mass*g,0))
+#        print(sum_of_all_torques_on_system)
+        if checkToFlip:
+            r = self.visual.pos - horiz_to_front_contact_patch
+            ratio = abs(r.y / r.x)
+            print(ratio, (1/static_friction_constant))
+            if ratio > (1/static_friction_constant):
+                print("FLIP TIME")
+                
+            
         
         # update self, self_com
         self.front_wheel.update(self.visual.pos)
