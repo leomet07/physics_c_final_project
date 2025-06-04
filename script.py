@@ -62,8 +62,8 @@ class Frame():
         self.frame_height = frame_height
         self.total_mass = self.frame_mass + self.front_wheel.mass + self.back_wheel.mass
         
-        self.rotational_inertia = 7 + 0.250 + 0.250 # sitting down human , 61.1 lb sec^2 in converted to kg m^2 (https://apps.dtic.mil/sti/pdfs/AD0410451.pdf) is approx 7 kgm^2
-        # adding 2 wheels with parallel axis theorem
+        self.rotational_inertia = 7 + (2 *(wheel_weight * ((vec(-frame_length / 2, -frame_height, 0).mag) ** 2))) + 0.250 # sitting down human , 61.1 lb sec^2 in converted to kg m^2 (https://apps.dtic.mil/sti/pdfs/AD0410451.pdf) is approx 7 kgm^2
+        # and added 2 wheels with parallel axis theorem
         
     def wheelNormalForce(self, frontOrBack):
 #        wheel
