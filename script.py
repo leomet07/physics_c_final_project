@@ -45,13 +45,14 @@ class MyWheel():
     def update(self, frame_com_pos):
         self.sphere.pos = frame_com_pos+self.offset_to_com
 
-
 class Frame():
 
     def __init__(self, com_pos, bike_speed_kmh, frame_mass, frame_length, frame_height):
         self.visual = sphere(pos=com_pos, radius=0.25, color=color.red)
         bike_speed = bike_speed_kmh * (1000 / 3600)
         self.com_vel = vec(bike_speed, 0, 0)
+        self.omega = vec(0,0,0) # psuedo vector
+        self.theta = vec(0,0,0) # psuedo vector here
         self.frame_mass = frame_mass
         
         wheel_rads_per_s = bike_speed / (wheel_radius)
@@ -60,7 +61,9 @@ class Frame():
         self.frame_length = frame_length
         self.frame_height = frame_height
         self.total_mass = self.frame_mass + self.front_wheel.mass + self.back_wheel.mass
-
+        
+        self.rotational_inertia = 7 + 0.250 + 0.250 # sitting down human , 61.1 lb sec^2 in converted to kg m^2 (https://apps.dtic.mil/sti/pdfs/AD0410451.pdf) is approx 7 kgm^2
+        # adding 2 wheels with parallel axis theorem
         
     def wheelNormalForce(self, frontOrBack):
 #        wheel
@@ -77,6 +80,11 @@ class Frame():
     
     def update(self):
         self.visual.pos += self.com_vel * dt
+        self.theta += self.omega * dt
+        print("Theta in degrees: ", self.theta * (180 / pi))
+        # update self, self_com
+        self.front_wheel.update(self.visual.pos)
+        self.back_wheel.update(self.visual.pos)
 
         Nf = self.wheelNormalForce("front")
         Nb = self.wheelNormalForce("back")
@@ -101,6 +109,7 @@ class Frame():
         
         # compute sum of all forces on system [NOTE: NO FRICTION FORCE MATCHING BRAKING FORCE ON BACK WHEEL)
         sum_of_all_forces_on_system = Nf + Nb + vec(0,-self.total_mass*g,0) + vec(-applied_friction_force_on_front_wheel,0,0)
+        
         a = sum_of_all_forces_on_system / self.total_mass
         change_in_v = a * dt
         self.com_vel = self.com_vel + change_in_v        
@@ -108,20 +117,23 @@ class Frame():
         # this is sum of all torques abt pivot at right wheel. should not always be applied...
         # Nf: r x F = 0. Nb: does apply torque. applied force also matters...?
         horiz_to_front_contact_patch = (self.front_wheel.sphere.pos - vec(0, self.front_wheel.radius, 0))
-        sum_of_all_torques_on_system = cross(self.back_wheel.sphere.pos - horiz_to_front_contact_patch, Nb) + cross(self.visual.pos - (self.front_wheel.sphere.pos - vec(0, self.front_wheel.radius, 0)),vec(0,-self.total_mass*g,0))
-#        print(sum_of_all_torques_on_system)
+        
         if checkToFlip:
             r = self.visual.pos - horiz_to_front_contact_patch
             ratio = abs(r.y / r.x)
-            print(ratio, (1/static_friction_constant))
+
             if ratio > (1/static_friction_constant):
                 print("FLIP TIME")
                 
-            
-        
-        # update self, self_com
-        self.front_wheel.update(self.visual.pos)
-        self.back_wheel.update(self.visual.pos)
+                # sum of all torques on system can only be used when the front wheel is locked, else any torque (friction on front) will angular accelerate JUST the wheel
+                torque_from_front_friction = cross(self.visual.pos - (self.front_wheel.sphere.pos - vec(0, self.front_wheel.radius, 0)),vec(-applied_friction_force_on_front_wheel,0,0))
+                # nf is now 100%
+                torque_from_N_f = cross(self.visual.pos - (self.front_wheel.sphere.pos - vec(0, self.front_wheel.radius, 0)), vec(0, g * self.total_mass,0) ) 
+                sum_of_all_torques_on_system = torque_from_front_friction + torque_from_N_f
+                
+                angulara = sum_of_all_torques_on_system / self.rotational_inertia
+                change_in_omega = angulara * dt
+                self.omega = self.omega + change_in_omega
         
 bike_speed_kmh = 30 # kmh
 myframe = Frame(vec(0,0.5,0), bike_speed_kmh, 80, 1, 0.5)
