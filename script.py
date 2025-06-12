@@ -93,28 +93,41 @@ class Frame():
         Nb = self.wheelNormalForce("back")
         
         
-        braking_force = len(self.frontBrakePressTimes) * 100 * 2 # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
-        print("Braking force: ", braking_force)
+        front_braking_force = len(self.frontBrakePressTimes) * 100 * 2 # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
+        back_braking_force = len(self.backBrakePressTimes) * 100 * 2 # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
+
+        print("Front Braking force: ", front_braking_force)
+        print("Back Braking force: ", back_braking_force)
         
         max_static_friction_force_front = (Nf * static_friction_constant).mag
         kinetic_friction_force_front = (Nf * kinetic_friction_constant).mag
+        max_static_friction_force_back = (Nb * static_friction_constant).mag
+        kinetic_friction_force_back = (Nb * kinetic_friction_constant).mag
+        print("normalss", Nf, Nb )
          
         if self.com_vel.x <= 0: # if not moving (less than 0.18kmh)
             applied_friction_force_on_front_wheel = 0
+            applied_friction_force_on_back_wheel = 0
             self.com_vel.x = 0 # keep it at zero forever
             self.front_wheel.sphere.color = color.cyan
         else:
-            if braking_force < max_static_friction_force_front:
-                applied_friction_force_on_front_wheel = braking_force # this is supplied by static friction
+            if front_braking_force < max_static_friction_force_front:
+                applied_friction_force_on_front_wheel = front_braking_force # this is supplied by static friction
             else:
                 applied_friction_force_on_front_wheel = kinetic_friction_force_front
 #                print(f"Sliding at t={t}")
                 self.front_wheel.sphere.color = color.yellow
                 checkToFlip = True # at this instant, you HAVE locked ur front wheel
+            if back_braking_force < max_static_friction_force_back:
+                applied_friction_force_on_back_wheel = back_braking_force # this is supplied by static friction
+            else:
+                applied_friction_force_on_back_wheel = kinetic_friction_force_back
+#                print(f"Sliding at t={t}")
+                self.back_wheel.sphere.color = color.yellow
         
         # compute sum of all forces on system [NOTE: NO FRICTION FORCE MATCHING BRAKING FORCE ON BACK WHEEL)
-        sum_of_all_forces_on_system = Nf + Nb + vec(0,-self.total_mass*g,0) + vec(-applied_friction_force_on_front_wheel,0,0)
-        
+        sum_of_all_forces_on_system = Nf + Nb + vec(0,-self.total_mass*g,0) + vec(-applied_friction_force_on_front_wheel,0,0) + vec(-applied_friction_force_on_back_wheel,0,0)
+        print("Sum of all forces on system: ", sum_of_all_forces_on_system)
         a = sum_of_all_forces_on_system / self.total_mass
         change_in_v = a * dt
         self.com_vel = self.com_vel + change_in_v        
@@ -123,6 +136,7 @@ class Frame():
         # Nf: r x F = 0. Nb: does apply torque. applied force also matters...?
         horiz_to_front_contact_patch = (self.front_wheel.sphere.pos - vec(0, self.front_wheel.radius, 0))
         
+        # rear braking can never induce a front flip, it will only ever cause rear to slip into Kf
         if checkToFlip:
             r = self.visual.pos - horiz_to_front_contact_patch
             ratio = abs(r.y / r.x)
@@ -140,7 +154,7 @@ class Frame():
                 change_in_omega = angulara * dt
                 self.omega = self.omega + change_in_omega
                 
-        # remove any old braking forces
+        # remove any old frint braking forces
         braking_time_index = 0 
         while braking_time_index < len(self.frontBrakePressTimes):
             braking_time = self.frontBrakePressTimes[braking_time_index]
@@ -148,6 +162,17 @@ class Frame():
                 
                 # then, remove braking time
                 self.frontBrakePressTimes.pop(braking_time_index)
+                braking_time_index -= 1
+                
+            braking_time_index += 1
+        # remove any old back braking forces
+        braking_time_index = 0 
+        while braking_time_index < len(self.backBrakePressTimes):
+            braking_time = self.backBrakePressTimes[braking_time_index]
+            if abs(t - braking_time) > 0.25: # seconds
+                
+                # then, remove braking time
+                self.backBrakePressTimes.pop(braking_time_index)
                 braking_time_index -= 1
                 
             braking_time_index += 1
