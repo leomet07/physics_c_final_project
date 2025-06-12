@@ -48,7 +48,7 @@ class MyWheel():
 class Frame():
 
     def __init__(self, com_pos, bike_speed_kmh, frame_mass, frame_length, frame_height):
-        self.visual = sphere(pos=com_pos, radius=0.25, color=color.red)
+        self.visual = box(pos=com_pos, length=2, height=2, width=0.002, texture={'file': "https://i.imgur.com/R7ZDJsv.jpeg", 'place': ['all']} )
         bike_speed = bike_speed_kmh * (1000 / 3600)
         self.com_vel = vec(bike_speed, 0, 0)
         self.omega = vec(0,0,0) # psuedo vector
@@ -178,9 +178,10 @@ class Frame():
             braking_time_index += 1
         
 bike_speed_kmh = 30 # kmh
-myframe = Frame(vec(0,0.5,0), bike_speed_kmh, 80, 1, 0.5)
+myframe = Frame(vec(0,0.5,-0.001), bike_speed_kmh, 80, 1, 0.5)
 scene.camera.pos=vector(8, 5, 12)
 
+scene.background = vector(0.11, 0.094, 0.212)
 
 def keyInput(evt):
     s = evt.key
