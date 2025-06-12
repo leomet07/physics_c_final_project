@@ -65,6 +65,9 @@ class Frame():
         self.rotational_inertia = 7 + (2 *(wheel_weight * ((vec(-frame_length / 2, -frame_height, 0).mag) ** 2))) + 0.250 # sitting down human , 61.1 lb sec^2 in converted to kg m^2 (https://apps.dtic.mil/sti/pdfs/AD0410451.pdf) is approx 7 kgm^2
         # and added 2 wheels with parallel axis theorem
         
+        self.frontBrakePressTimes = []
+        self.backBrakePressTimes = []
+        
     def wheelNormalForce(self, frontOrBack):
 #        wheel
         if frontOrBack == "front":
@@ -88,8 +91,10 @@ class Frame():
 
         Nf = self.wheelNormalForce("front")
         Nb = self.wheelNormalForce("back")
-   
-        braking_force = 100 * 6 * max(0.5, t) # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
+        
+        
+        braking_force = len(self.frontBrakePressTimes) * 100 * 2 # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
+        print("Braking force: ", braking_force)
         
         max_static_friction_force_front = (Nf * static_friction_constant).mag
         kinetic_friction_force_front = (Nf * kinetic_friction_constant).mag
@@ -134,10 +139,34 @@ class Frame():
                 angulara = sum_of_all_torques_on_system / self.rotational_inertia
                 change_in_omega = angulara * dt
                 self.omega = self.omega + change_in_omega
+                
+        # remove any old braking forces
+        braking_time_index = 0 
+        while braking_time_index < len(self.frontBrakePressTimes):
+            braking_time = self.frontBrakePressTimes[braking_time_index]
+            if abs(t - braking_time) > 0.25: # seconds
+                
+                # then, remove braking time
+                self.frontBrakePressTimes.pop(braking_time_index)
+                braking_time_index -= 1
+                
+            braking_time_index += 1
         
 bike_speed_kmh = 30 # kmh
 myframe = Frame(vec(0,0.5,0), bike_speed_kmh, 80, 1, 0.5)
 scene.camera.pos=vector(8, 5, 12)
+
+
+def keyInput(evt):
+    s = evt.key
+    
+    if s == "f":
+        myframe.frontBrakePressTimes.append(t)
+    elif s == "b":
+        myframe.backBrakePressTimes.append(t)
+scene.bind('keydown', keyInput)
+
+
 
 # draw grid
 grid_line_x_spacing=5
