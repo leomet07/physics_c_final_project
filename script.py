@@ -9,7 +9,7 @@ xpos_graph_dots =gdots(color=color.red, graph=xpos_graph)
 xvel_graph = graph(width=350, height=250, xtitle=("Time"), ytitle=("COM x vel"), align='left')
 xvel_graph_dots =gdots(color=color.red, graph=xvel_graph)
 
-running = True
+running = False
 
 wheel_diameter = 622.0 / 1000.0#(mm) /1000
 wheel_radius = wheel_diameter * 0.5
@@ -17,6 +17,11 @@ wheel_mass = 1 # kg
 
 static_friction_constant = 0.65 # for a good tire: https://www.bicyclerollingresistance.com/road-bike-reviews 
 kinetic_friction_constant = 0.25 # for a good tire: https://www.bicyclerollingresistance.com/road-bike-reviews 
+
+
+
+brake_explainer_text = wtext(text=f"Press f for a front brake impulse (0.25s) or press b for a back brake impulse (0.25s).")
+scene.append_to_caption('\n')
 
 def sf_bind(evt):
     global static_friction_constant
@@ -216,11 +221,19 @@ def wheel_offset_bind(evt):
     myframe.back_wheel.offset_to_com.x = evt.value
     myframe.front_wheel.offset_to_com.x = myframe.frame_length - abs(evt.value)
     wheel_offset_text.text = f"Rear wheel offset: {myframe.back_wheel.offset_to_com.x}"
+
+wheel_offset_explainer_text = wtext(text=f"More positive (slider to the right) rear wheel offset moves the COM backward and increases rear normal force (rear wheel comes forward).\nNote: front wheel offset also changes to keep bike (frame) length a constant.")
+scene.append_to_caption('\n')
 wheel_offset_slider = slider(bind=wheel_offset_bind , max=0, min=-0.6, step=0.05, value=myframe.back_wheel.offset_to_com.x, id='wheel_offset_slider', align="left")
 wheel_offset_text = wtext(text=f"Rear wheel offset: {myframe.back_wheel.offset_to_com.x}")
 scene.append_to_caption('\n')
-wheel_offset_explainer_text = wtext(text=f"More positive (slider to the right) rear wheel offset moves the COM backward and increases rear normal force (rear wheel comes forward).\nNote: front wheel offset also changes to keep bike (frame) length a constant.")
-scene.append_to_caption('\n')
+
+def start(evt):
+    global running
+    running = True
+    startbtn.disabled = True
+    resetbtn.disabled = False
+
 def reset(evt):
     global myframe
     global running
@@ -234,10 +247,13 @@ def reset(evt):
     t = 0
     xpos_graph_dots.delete()
     xvel_graph_dots.delete()
-    
-    running = True
-    
+    startbtn.disabled = False
+    resetbtn.disabled = True
+
+startbtn = button( bind=start, text='Start' )
 resetbtn = button( bind=reset, text='Reset' )
+resetbtn.disabled = True
+
 scene.append_to_caption('\n\n')
 
 def keyInput(evt):
