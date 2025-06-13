@@ -13,7 +13,7 @@ running = True
 
 wheel_diameter = 622.0 / 1000.0#(mm) /1000
 wheel_radius = wheel_diameter * 0.5
-wheel_weight = 1 # kg
+wheel_mass = 1 # kg
 
 static_friction_constant = 0.65 # for a good tire: https://www.bicyclerollingresistance.com/road-bike-reviews 
 kinetic_friction_constant = 0.25 # for a good tire: https://www.bicyclerollingresistance.com/road-bike-reviews 
@@ -54,13 +54,13 @@ class Frame():
         self.frame_mass = frame_mass
         
         wheel_rads_per_s = bike_speed / (wheel_radius)
-        self.front_wheel = MyWheel(vec(0,0,-wheel_rads_per_s), wheel_weight, wheel_radius, self.visual.pos, vec(frame_length / 2, -frame_height, 0)) # initial case, match wheel speed to bike translational speed
-        self.back_wheel = MyWheel(vec(0,0,-wheel_rads_per_s), wheel_weight, wheel_radius, self.visual.pos, vec(-frame_length / 2, -frame_height, 0))
+        self.front_wheel = MyWheel(vec(0,0,-wheel_rads_per_s), wheel_mass, wheel_radius, self.visual.pos, vec(frame_length / 2, -frame_height, 0)) # initial case, match wheel speed to bike translational speed
+        self.back_wheel = MyWheel(vec(0,0,-wheel_rads_per_s), wheel_mass, wheel_radius, self.visual.pos, vec(-frame_length / 2, -frame_height, 0))
         self.frame_length = frame_length
         self.frame_height = frame_height
         self.total_mass = self.frame_mass + self.front_wheel.mass + self.back_wheel.mass
         
-        self.rotational_inertia = 7 + (2 *(wheel_weight * ((vec(-frame_length / 2, -frame_height, 0).mag) ** 2))) + 0.250 # sitting down human , 61.1 lb sec^2 in converted to kg m^2 (https://apps.dtic.mil/sti/pdfs/AD0410451.pdf) is approx 7 kgm^2
+        self.rotational_inertia = 7 + (2 *(wheel_mass * ((vec(-frame_length / 2, -frame_height, 0).mag) ** 2))) + 0.250 # sitting down human , 61.1 lb sec^2 in converted to kg m^2 (https://apps.dtic.mil/sti/pdfs/AD0410451.pdf) is approx 7 kgm^2
         # and added 2 wheels with parallel axis theorem
         
         self.frontBrakePressTimes = []
@@ -160,7 +160,7 @@ class Frame():
                 
         if not isFrontSliding and self.theta.z < 0 and self.omega.mag == 0: # means stopped in the air, start rotating back to normal
             # then, weight applies torque to keep flipping forwards
-            torque_from_weight = cross(self.visual.pos - front_wheel_pos, vec(0, g * (self.total_mass - wheel_weight),0) ) 
+            torque_from_weight = cross(self.visual.pos - front_wheel_pos, vec(0, g * (self.total_mass - wheel_mass),0) ) 
             
             if (self.theta.z * (180/pi) > -90): # if hasn't flipped 90 degrees yet, weight will push you back down!
                  torque_from_weight *= -1
@@ -207,10 +207,14 @@ class Frame():
 
         if abs(self.theta.z * (180 / pi)) > 180:
             running = False
+    def self_destruct(self):
+        self.visual.visible = False
 
-        
+def create_new_frame():
+    return Frame(vec(0,1,-0.001), bike_speed_kmh, 80, 1, 0.5)
+
 bike_speed_kmh = 30 # kmh
-myframe = Frame(vec(0,1,-0.001), bike_speed_kmh, 80, 1, 0.5)
+myframe = create_new_frame()
 scene.camera.pos=vector(20, 5, 12)
 scene.width = 1200
 scene.background = vector(0.11, 0.094, 0.212)
@@ -222,8 +226,25 @@ def wheel_offset_bind(evt):
 wheel_offset_slider = slider(bind=wheel_offset_bind , max=0, min=-0.6, step=0.05, value=myframe.back_wheel.offset_to_com.x, id='wheel_offset_slider', align="left")
 wheel_offset_text = wtext(text=f"Rear wheel offset: {myframe.back_wheel.offset_to_com.x}")
 scene.append_to_caption('\n')
-wheel_offset_explainer_text = wtext(text=f"More positive (slider to the right) rear wheel offset moves the COM backward and increases rear normal force (rear wheel comes forward).\n Note: front wheel offset also changes to keep bike (frame) length a constant.")
+wheel_offset_explainer_text = wtext(text=f"More positive (slider to the right) rear wheel offset moves the COM backward and increases rear normal force (rear wheel comes forward).\nNote: front wheel offset also changes to keep bike (frame) length a constant.")
 scene.append_to_caption('\n')
+def reset(evt):
+    global myframe
+    global running
+    global t
+    running = False
+    myframe.self_destruct()
+    del myframe
+    myframe = create_new_frame()
+    
+    t = 0
+    xpos_graph_dots.delete()
+    xvel_graph_dots.delete()
+    
+    running = True
+    
+resetbtn = button( bind=reset, text='Reset' )
+scene.append_to_caption('\n\n')
 
 def keyInput(evt):
     s = evt.key
