@@ -78,7 +78,7 @@ class Frame():
             pos_or_neg = -1
         L = self.frame_length
         bcond = L - abs(wheel.offset_to_com.x)
-        h = self.frame_length
+        h = self.frame_height
         return vec(0,self.total_mass*g*((bcond/L)+((static_friction_constant*h*pos_or_neg)/L)),0)
     
     def update(self):
@@ -92,6 +92,11 @@ class Frame():
         Nf = self.wheelNormalForce("front")
         Nb = self.wheelNormalForce("back")
         
+        #print("front normal force " , Nf)
+        #print("back normal force " , Nb)
+        #print("front + back " , Nb + Nf)
+        #print("mg ", self.total_mass * g)
+        
         
         front_braking_force = len(self.frontBrakePressTimes) * 100 * 2 # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
         back_braking_force = len(self.backBrakePressTimes) * 100 * 2 # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
@@ -104,7 +109,8 @@ class Frame():
         max_static_friction_force_back = (Nb * static_friction_constant).mag
         kinetic_friction_force_back = (Nb * kinetic_friction_constant).mag
         print("normalss", Nf, Nb )
-         
+        self.front_wheel.sphere.color = color.cyan
+        self.back_wheel.sphere.color = color.cyan
         if self.com_vel.x <= 0: # if not moving (less than 0.18kmh)
             applied_friction_force_on_front_wheel = 0
             applied_friction_force_on_back_wheel = 0
