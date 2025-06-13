@@ -120,7 +120,6 @@ class Frame():
         
         # compute sum of all forces on system [NOTE: NO FRICTION FORCE MATCHING BRAKING FORCE ON BACK WHEEL)
         sum_of_all_forces_on_system = Nf + Nb + vec(0,-self.total_mass*g,0) + vec(-applied_friction_force_on_front_wheel,0,0) + vec(-applied_friction_force_on_back_wheel,0,0)
-        print("Sum of all forces on system: ", sum_of_all_forces_on_system)
         a = sum_of_all_forces_on_system / self.total_mass
         change_in_v = a * dt
         self.com_vel = self.com_vel + change_in_v        
@@ -198,8 +197,8 @@ class Frame():
         
 bike_speed_kmh = 30 # kmh
 myframe = Frame(vec(0,1,-0.001), bike_speed_kmh, 80, 1, 0.5)
-scene.camera.pos=vector(8, 5, 12)
-
+scene.camera.pos=vector(20, 5, 12)
+scene.width = 1200
 scene.background = vector(0.11, 0.094, 0.212)
 
 def keyInput(evt):
@@ -210,8 +209,6 @@ def keyInput(evt):
     elif s == "b":
         myframe.backBrakePressTimes.append(t)
 scene.bind('keydown', keyInput)
-
-
 
 # draw grid
 grid_line_x_spacing=5
