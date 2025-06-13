@@ -9,10 +9,11 @@ xpos_graph_dots =gdots(color=color.red, graph=xpos_graph)
 xvel_graph = graph(width=350, height=250, xtitle=("Time"), ytitle=("COM x vel"), align='left')
 xvel_graph_dots =gdots(color=color.red, graph=xvel_graph)
 
+running = True
+
 wheel_diameter = 622.0 / 1000.0#(mm) /1000
 wheel_radius = wheel_diameter * 0.5
 wheel_weight = 1 # kg
-
 
 static_friction_constant = 0.65 # for a good tire: https://www.bicyclerollingresistance.com/road-bike-reviews 
 kinetic_friction_constant = 0.25 # for a good tire: https://www.bicyclerollingresistance.com/road-bike-reviews 
@@ -82,22 +83,19 @@ class Frame():
         return vec(0,self.total_mass*g*((bcond/L)+((static_friction_constant*h*pos_or_neg)/L)),0)
     
     def update(self):
+        global running
         self.visual.pos += self.com_vel * dt
         self.theta += self.omega * dt
-        print("Theta in degrees: ", self.theta * (180 / pi))
+        
+        self.visual.rotate(axis=vec(0, 0, 1), angle=self.omega.z * dt) # how much to rotate by
+        
         # update self, self_com
         self.front_wheel.update(self.visual.pos)
         self.back_wheel.update(self.visual.pos)
 
         Nf = self.wheelNormalForce("front")
         Nb = self.wheelNormalForce("back")
-        
-        #print("front normal force " , Nf)
-        #print("back normal force " , Nb)
-        #print("front + back " , Nb + Nf)
-        #print("mg ", self.total_mass * g)
-        
-        
+                
         front_braking_force = len(self.frontBrakePressTimes) * 100 * 2 # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
         back_braking_force = len(self.backBrakePressTimes) * 100 * 2 # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
 
@@ -111,14 +109,19 @@ class Frame():
         print("normalss", Nf, Nb )
         self.front_wheel.sphere.color = color.cyan
         self.back_wheel.sphere.color = color.cyan
+        
+        isFrontSliding = False
+        isBackSliding = False
+        
         if self.com_vel.x <= 0: # if not moving (less than 0.18kmh)
             applied_friction_force_on_front_wheel = 0
             applied_friction_force_on_back_wheel = 0
             self.com_vel.x = 0 # keep it at zero forever
             self.front_wheel.sphere.color = color.cyan
         else:
-            if front_braking_force < max_static_friction_force_front:
+            if front_braking_force < max_static_friction_force_front: # front wheel is rolling
                 applied_friction_force_on_front_wheel = front_braking_force # this is supplied by static friction
+                self.omega = vec(0,0,0) # once front wheel is rolling, no more omega bc not a rigid body
             else:
                 applied_friction_force_on_front_wheel = kinetic_friction_force_front
 #                print(f"Sliding at t={t}")
@@ -130,6 +133,7 @@ class Frame():
                 applied_friction_force_on_back_wheel = kinetic_friction_force_back
 #                print(f"Sliding at t={t}")
                 self.back_wheel.sphere.color = color.yellow
+                isBackSliding = True
         
         # compute sum of all forces on system [NOTE: NO FRICTION FORCE MATCHING BRAKING FORCE ON BACK WHEEL)
         sum_of_all_forces_on_system = Nf + Nb + vec(0,-self.total_mass*g,0) + vec(-applied_friction_force_on_front_wheel,0,0) + vec(-applied_friction_force_on_back_wheel,0,0)
@@ -148,8 +152,6 @@ class Frame():
             ratio = abs(r.y / r.x)
 
             if ratio > (1/static_friction_constant):
-                print("FLIP TIME")
-                
                 # sum of all torques on system can only be used when the front wheel is locked, else any torque (friction on front) will angular accelerate JUST the wheel
                 torque_from_front_friction = cross(self.visual.pos - (self.front_wheel.sphere.pos - vec(0, self.front_wheel.radius, 0)),vec(-applied_friction_force_on_front_wheel,0,0))
                 # nf is now 100%
@@ -159,8 +161,21 @@ class Frame():
                 angulara = sum_of_all_torques_on_system / self.rotational_inertia
                 change_in_omega = angulara * dt
                 self.omega = self.omega + change_in_omega
+            else:
+                isFrontSliding = True
                 
-        # remove any old frint braking forces
+        # change texture
+        if not isBackSliding and not isFrontSliding:
+            self.visual.texture = {'file': "https://i.imgur.com/R7ZDJsv.jpeg", 'place': ['all']} 
+        if isBackSliding and not isFrontSliding:
+            self.visual.texture = {'file': "https://i.imgur.com/s6axBkU.jpeg", 'place': ['all']} 
+        if not isBackSliding and isFrontSliding:
+            self.visual.texture = {'file': "https://i.imgur.com/H41Cspk.jpeg", 'place': ['all']} 
+        if isBackSliding and isFrontSliding:
+            self.visual.texture = {'file': "https://i.imgur.com/ZG4avHf.jpeg", 'place': ['all']} 
+            
+                
+        # remove any old front braking forces
         braking_time_index = 0 
         while braking_time_index < len(self.frontBrakePressTimes):
             braking_time = self.frontBrakePressTimes[braking_time_index]
@@ -182,6 +197,12 @@ class Frame():
                 braking_time_index -= 1
                 
             braking_time_index += 1
+            
+
+        if abs(self.theta.z * (180 / pi)) > 180:
+            alert("You flipped over!")
+            running = False
+
         
 bike_speed_kmh = 30 # kmh
 myframe = Frame(vec(0,0.5,-0.001), bike_speed_kmh, 80, 1, 0.5)
@@ -215,9 +236,10 @@ curve(pos=[vec(-100, 0, 0), vec(200, 0, 0)], color=color.white)
 while True:
     rate(1/dt)
     
-    myframe.update()
-
-    xpos_graph_dots.plot(t, myframe.visual.pos.x)
-    xvel_graph_dots.plot(t, myframe.com_vel.x)
+    if running:
+        myframe.update()
     
-    t += dt
+        xpos_graph_dots.plot(t, myframe.visual.pos.x)
+        xvel_graph_dots.plot(t, myframe.com_vel.x)
+        
+        t += dt
