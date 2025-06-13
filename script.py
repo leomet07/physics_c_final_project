@@ -4,12 +4,14 @@ t=0
 dt = 0.02
 g = 9.81
 
-xpos_graph = graph(width=350, height=250, xtitle=("Time"), ytitle=("COM x pos"), align='left')
+xpos_graph = graph(width=350, height=250, xtitle=("Time (s)"), ytitle=("COM x pos. (m)"), align='left')
 xpos_graph_dots =gdots(color=color.red, graph=xpos_graph)
-xvel_graph = graph(width=350, height=250, xtitle=("Time"), ytitle=("COM x vel"), align='left')
+xvel_graph = graph(width=350, height=250, xtitle=("Time (s)"), ytitle=("COM x vel. (m)"), align='left')
 xvel_graph_dots =gdots(color=color.red, graph=xvel_graph)
 
 running = False
+hasDiedText = None
+
 
 wheel_diameter = 622.0 / 1000.0#(mm) /1000
 wheel_radius = wheel_diameter * 0.5
@@ -85,7 +87,16 @@ class Frame():
     
     def update(self):
         global running
+        global hasDiedText
         self.visual.pos += self.com_vel * dt
+        
+        # check if rider has hit wall
+        if self.visual.pos.x >= 40:
+            self.com_vel = vec(0,0,0)
+            running = False
+            hasDiedText = label(pos=vec(20, 0, 0), text='YOU HIT THE WALL AND DIED!', yoffset=50, space=60, height=60, border=4, line=False, font='sans')
+            return
+            
         self.theta += self.omega * dt        
         self.visual.rotate(axis=vec(0, 0, 1), angle=self.omega.z * dt) # how much to rotate by
         
@@ -204,6 +215,8 @@ class Frame():
             
         if abs(self.theta.z * (180 / pi)) > 180:
             running = False
+            hasDiedText = label(pos=vec(20, 0, 0), text='YOU FLIPPED OVER AND DIED!', yoffset=50, space=60, height=60, border=4, line=False, font='sans')
+        
         
     def self_destruct(self):
         self.visual.visible = False
@@ -224,7 +237,7 @@ def wheel_offset_bind(evt):
 
 wheel_offset_explainer_text = wtext(text=f"More positive (slider to the right) rear wheel offset moves the COM backward and increases rear normal force (rear wheel comes forward).\nNote: front wheel offset also changes to keep bike (frame) length a constant.")
 scene.append_to_caption('\n')
-wheel_offset_slider = slider(bind=wheel_offset_bind , max=0, min=-0.6, step=0.05, value=myframe.back_wheel.offset_to_com.x, id='wheel_offset_slider', align="left")
+wheel_offset_slider = slider(bind=wheel_offset_bind , max=0, min=-0.5, step=0.05, value=myframe.back_wheel.offset_to_com.x, id='wheel_offset_slider', align="left")
 wheel_offset_text = wtext(text=f"Rear wheel offset: {myframe.back_wheel.offset_to_com.x}")
 scene.append_to_caption('\n')
 
@@ -238,6 +251,7 @@ def reset(evt):
     global myframe
     global running
     global t
+    global hasDiedText
     running = False
     
     myframe.self_destruct()
@@ -249,6 +263,10 @@ def reset(evt):
     xvel_graph_dots.delete()
     startbtn.disabled = False
     resetbtn.disabled = True
+    
+    if hasDiedText:
+        hasDiedText.visible = False
+        hasDiedText = None
 
 startbtn = button( bind=start, text='Start' )
 resetbtn = button( bind=reset, text='Reset' )
@@ -272,8 +290,10 @@ for x in range(0, 50, grid_line_x_spacing):
         linecolor = color.blue
     else:
         linecolor = color.white
-    curve(pos=[vec(x, -1, -0.001), vec(x, 1, -0.001)], color=linecolor)
+    ending_wall_y = 10 if x == 40 else 1
+    curve(pos=[vec(x, -1, -0.001), vec(x, ending_wall_y, -0.001)], color=linecolor)
     label(pos=vec(x, -1, 0), text=f"{x}m", xoffset=0, yoffset=0, space=30, height=16, border=4, font='sans')
+    
 # draw floor
 curve(pos=[vec(-100, 0, 0), vec(200, 0, 0)], color=color.white)
 
