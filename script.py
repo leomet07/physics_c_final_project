@@ -67,7 +67,6 @@ class Frame():
         self.backBrakePressTimes = []
         
     def wheelNormalForce(self, frontOrBack):
-#        wheel
         if frontOrBack == "front":
             wheel = self.front_wheel
             pos_or_neg = 1
@@ -98,14 +97,14 @@ class Frame():
         front_braking_force = len(self.frontBrakePressTimes) * 100 * 2 # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
         back_braking_force = len(self.backBrakePressTimes) * 100 * 2 # roughly 75N (like lfiting a 15lbs weight) from hand, applied across 2cm distance; good rim brakes have mechanichal advantage of 6 
 
-        print("Front Braking force: ", front_braking_force)
-        print("Back Braking force: ", back_braking_force)
+#        print("Front Braking force: ", front_braking_force)
+#        print("Back Braking force: ", back_braking_force)
         
         max_static_friction_force_front = (Nf * static_friction_constant).mag
         kinetic_friction_force_front = (Nf * kinetic_friction_constant).mag
         max_static_friction_force_back = (Nb * static_friction_constant).mag
         kinetic_friction_force_back = (Nb * kinetic_friction_constant).mag
-        print("normals (back, front)", Nb, Nf )
+#        print("normals (back, front)", Nb, Nf )
         
         isFrontSliding = False
         isBackSliding = False
@@ -144,7 +143,6 @@ class Frame():
             ratio = abs(r.y / r.x)
 
             if ratio > (1/static_friction_constant):
-                
                 # sum of all torques on system can only be used when the front wheel is locked, else any torque (friction on front) will angular accelerate JUST the wheel
                 torque_from_front_friction = cross(self.visual.pos - (front_wheel_pos - vec(0, self.front_wheel.radius, 0)),vec(-applied_friction_force_on_front_wheel,0,0))
                 # nf is now 100%
@@ -152,7 +150,6 @@ class Frame():
                 sum_of_all_torques_on_system = torque_from_front_friction + torque_from_N_f
                 
                 angulara = sum_of_all_torques_on_system / self.rotational_inertia
-#                print("SETTING ANGULAR A: ", angulara)
                 change_in_omega = angulara * dt
                 self.omega = self.omega + change_in_omega
             else:
@@ -180,33 +177,29 @@ class Frame():
         if isBackSliding and isFrontSliding:
             self.visual.texture = {'file': "https://i.imgur.com/ZG4avHf.jpeg", 'place': ['all']} 
             
-                
         # remove any old front braking forces
         braking_time_index = 0 
         while braking_time_index < len(self.frontBrakePressTimes):
             braking_time = self.frontBrakePressTimes[braking_time_index]
             if abs(t - braking_time) > 0.25: # seconds
-                
                 # then, remove braking time
                 self.frontBrakePressTimes.pop(braking_time_index)
                 braking_time_index -= 1
-                
             braking_time_index += 1
+        
         # remove any old back braking forces
         braking_time_index = 0 
         while braking_time_index < len(self.backBrakePressTimes):
             braking_time = self.backBrakePressTimes[braking_time_index]
             if abs(t - braking_time) > 0.25: # seconds
-                
                 # then, remove braking time
                 self.backBrakePressTimes.pop(braking_time_index)
                 braking_time_index -= 1
-                
             braking_time_index += 1
             
-
         if abs(self.theta.z * (180 / pi)) > 180:
             running = False
+        
     def self_destruct(self):
         self.visual.visible = False
 
@@ -233,10 +226,11 @@ def reset(evt):
     global running
     global t
     running = False
+    
     myframe.self_destruct()
     del myframe
     myframe = create_new_frame()
-    
+
     t = 0
     xpos_graph_dots.delete()
     xvel_graph_dots.delete()
