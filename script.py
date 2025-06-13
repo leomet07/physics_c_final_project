@@ -26,14 +26,16 @@ def sf_bind(evt):
 sf_slider = slider(bind=sf_bind , max=2, min=0, step=0.05, value=static_friction_constant, id='sf_slider', align="left")
 sf_text = wtext(text=f"Static friction constant: {static_friction_constant}")
 scene.append_to_caption('\n')
+
+
 def kf_bind(evt):
     global kinetic_friction_constant
     kinetic_friction_constant = evt.value
     kf_text.text = f"Kinetic friction constant: {kinetic_friction_constant}"
-
 kf_slider = slider(bind=kf_bind , max=2, min=0, step=0.05, value=kinetic_friction_constant, id='kf_slider', align="left")
 kf_text = wtext(text=f"Kinetic friction constant: {kinetic_friction_constant}")
 scene.append_to_caption('\n')
+
 class MyWheel():
     def __init__(self, a_vel, mass, radius, frame_com_pos, offset_to_com):
         self.a_vel = a_vel
@@ -82,7 +84,14 @@ class Frame():
         self.visual.pos += self.com_vel * dt
         self.theta += self.omega * dt        
         self.visual.rotate(axis=vec(0, 0, 1), angle=self.omega.z * dt) # how much to rotate by
-
+        
+        if self.theta.z > 0: # can't flip over backwards in forwards motion
+            # this is needed when you let go of a brake and you start falling back, DONT FALL BACK TOO MUCH
+            self.theta.z = 0
+            self.omega = vec(0,0,0)
+            
+            
+        
         Nf = self.wheelNormalForce("front")
         Nb = self.wheelNormalForce("back")
                 
@@ -96,7 +105,7 @@ class Frame():
         kinetic_friction_force_front = (Nf * kinetic_friction_constant).mag
         max_static_friction_force_back = (Nb * static_friction_constant).mag
         kinetic_friction_force_back = (Nb * kinetic_friction_constant).mag
-        print("normalss", Nf, Nb )
+        print("normals (back, front)", Nb, Nf )
         
         isFrontSliding = False
         isBackSliding = False
@@ -135,6 +144,7 @@ class Frame():
             ratio = abs(r.y / r.x)
 
             if ratio > (1/static_friction_constant):
+                
                 # sum of all torques on system can only be used when the front wheel is locked, else any torque (friction on front) will angular accelerate JUST the wheel
                 torque_from_front_friction = cross(self.visual.pos - (front_wheel_pos - vec(0, self.front_wheel.radius, 0)),vec(-applied_friction_force_on_front_wheel,0,0))
                 # nf is now 100%
@@ -142,14 +152,18 @@ class Frame():
                 sum_of_all_torques_on_system = torque_from_front_friction + torque_from_N_f
                 
                 angulara = sum_of_all_torques_on_system / self.rotational_inertia
+#                print("SETTING ANGULAR A: ", angulara)
                 change_in_omega = angulara * dt
                 self.omega = self.omega + change_in_omega
             else:
                 isFrontSliding = True
                 
         if not isFrontSliding and self.theta.z < 0 and self.omega.mag == 0: # means stopped in the air, start rotating back to normal
-            # then, weight applies torque BACK
-            torque_from_weight = -1 * cross(self.visual.pos - front_wheel_pos, vec(0, g * (self.total_mass - wheel_weight),0) ) 
+            # then, weight applies torque to keep flipping forwards
+            torque_from_weight = cross(self.visual.pos - front_wheel_pos, vec(0, g * (self.total_mass - wheel_weight),0) ) 
+            
+            if (self.theta.z * (180/pi) > -90): # if hasn't flipped 90 degrees yet, weight will push you back down!
+                 torque_from_weight *= -1
             sum_of_all_torques_on_system = torque_from_weight
             
             angulara = sum_of_all_torques_on_system / self.rotational_inertia
@@ -200,6 +214,16 @@ myframe = Frame(vec(0,1,-0.001), bike_speed_kmh, 80, 1, 0.5)
 scene.camera.pos=vector(20, 5, 12)
 scene.width = 1200
 scene.background = vector(0.11, 0.094, 0.212)
+
+def wheel_offset_bind(evt):
+    myframe.back_wheel.offset_to_com.x = evt.value
+    myframe.front_wheel.offset_to_com.x = myframe.frame_length - abs(evt.value)
+    wheel_offset_text.text = f"Rear wheel offset: {myframe.back_wheel.offset_to_com.x}"
+wheel_offset_slider = slider(bind=wheel_offset_bind , max=0, min=-0.6, step=0.05, value=myframe.back_wheel.offset_to_com.x, id='wheel_offset_slider', align="left")
+wheel_offset_text = wtext(text=f"Rear wheel offset: {myframe.back_wheel.offset_to_com.x}")
+scene.append_to_caption('\n')
+wheel_offset_explainer_text = wtext(text=f"More positive (slider to the right) rear wheel offset moves the COM backward and increases rear normal force (rear wheel comes forward).\n Note: front wheel offset also changes to keep bike (frame) length a constant.")
+scene.append_to_caption('\n')
 
 def keyInput(evt):
     s = evt.key
