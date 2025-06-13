@@ -1,0 +1,32 @@
+Web VPython 3.2
+#bikeflip by Lenny Metlitsky and Astrid Harrington, Period 3
+# 6/13/2025
+
+#Our project is a simulation of a bike rolling along the x-axis of a flat plane. 
+#There are two graphs, one that plots the x position of the bike’s center of 
+#mass and one that plots the x velocity of the bike’s center of mass. 
+
+#The user can tell if a wheel is locked (and sliding) based on its color: wheels 
+#will turn red when they start to slide. They can also tell visually if the bike
+#is flipping.
+
+#The user can control several variables:
+
+#First, there are two sliders that control the coefficients of static and 
+#kinetic friction. Both are important, because static friction determines when 
+#the bike’s wheels start sliding and kinetic friction determines how quickly the 
+#bike slows down once its wheels are sliding. 
+
+#There is also a slider to control the bike’s center of mass. Moving the center 
+#of mass backward simulates the rider leaning back in their seat. It should be 
+#noted that moving the slider right actually moves the center of mass to the left.
+
+#Braking force and activation time for the front and back wheels of the bike can 
+#be controlled by pressing f and b respectively. Pressing f delivers an impulse 
+#to the front wheel, while pressing b delivers an impulse to the back wheel. 
+#These impulses last 0.25 seconds and can be stacked on top of each other (ie. 
+#pressing f repeatedly will increase the braking force applied to the front 
+#wheel). Initially, we said we would use functions and sliders to control these 
+#variables, but we simplified this to pressing buttons per Ms. Sharaf’s 
+#suggestion after we had submitted the final project proposal.
+
