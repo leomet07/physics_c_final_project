@@ -40,16 +40,11 @@ class MyWheel():
         self.mass = mass
         self.radius = radius
         self.offset_to_com = offset_to_com
-        
-        self.sphere = sphere(pos=frame_com_pos+offset_to_com, radius=self.radius, color=color.cyan)
-
-    def update(self, frame_com_pos):
-        self.sphere.pos = frame_com_pos+self.offset_to_com
 
 class Frame():
 
     def __init__(self, com_pos, bike_speed_kmh, frame_mass, frame_length, frame_height):
-        self.visual = box(pos=com_pos, length=2, height=2, width=0.002, texture={'file': "https://i.imgur.com/R7ZDJsv.jpeg", 'place': ['all']} )
+        self.visual = box(pos=com_pos, length=frame_length*2, height=frame_height*2, width=0.002, texture={'file': "https://i.imgur.com/R7ZDJsv.jpeg", 'place': ['all']} )
         bike_speed = bike_speed_kmh * (1000 / 3600)
         self.com_vel = vec(bike_speed, 0, 0)
         self.omega = vec(0,0,0) # psuedo vector
@@ -85,13 +80,8 @@ class Frame():
     def update(self):
         global running
         self.visual.pos += self.com_vel * dt
-        self.theta += self.omega * dt
-        
+        self.theta += self.omega * dt        
         self.visual.rotate(axis=vec(0, 0, 1), angle=self.omega.z * dt) # how much to rotate by
-        
-        # update self, self_com
-        self.front_wheel.update(self.visual.pos)
-        self.back_wheel.update(self.visual.pos)
 
         Nf = self.wheelNormalForce("front")
         Nb = self.wheelNormalForce("back")
@@ -107,8 +97,6 @@ class Frame():
         max_static_friction_force_back = (Nb * static_friction_constant).mag
         kinetic_friction_force_back = (Nb * kinetic_friction_constant).mag
         print("normalss", Nf, Nb )
-        self.front_wheel.sphere.color = color.cyan
-        self.back_wheel.sphere.color = color.cyan
         
         isFrontSliding = False
         isBackSliding = False
@@ -117,22 +105,17 @@ class Frame():
             applied_friction_force_on_front_wheel = 0
             applied_friction_force_on_back_wheel = 0
             self.com_vel.x = 0 # keep it at zero forever
-            self.front_wheel.sphere.color = color.cyan
         else:
             if front_braking_force < max_static_friction_force_front: # front wheel is rolling
                 applied_friction_force_on_front_wheel = front_braking_force # this is supplied by static friction
                 self.omega = vec(0,0,0) # once front wheel is rolling, no more omega bc not a rigid body
             else:
                 applied_friction_force_on_front_wheel = kinetic_friction_force_front
-#                print(f"Sliding at t={t}")
-                self.front_wheel.sphere.color = color.yellow
                 checkToFlip = True # at this instant, you HAVE locked ur front wheel
             if back_braking_force < max_static_friction_force_back:
                 applied_friction_force_on_back_wheel = back_braking_force # this is supplied by static friction
             else:
                 applied_friction_force_on_back_wheel = kinetic_friction_force_back
-#                print(f"Sliding at t={t}")
-                self.back_wheel.sphere.color = color.yellow
                 isBackSliding = True
         
         # compute sum of all forces on system [NOTE: NO FRICTION FORCE MATCHING BRAKING FORCE ON BACK WHEEL)
@@ -144,7 +127,8 @@ class Frame():
         
         # this is sum of all torques abt pivot at right wheel. should not always be applied...
         # Nf: r x F = 0. Nb: does apply torque. applied force also matters...?
-        horiz_to_front_contact_patch = (self.front_wheel.sphere.pos - vec(0, self.front_wheel.radius, 0))
+        front_wheel_pos = self.visual.pos + self.front_wheel.offset_to_com
+        horiz_to_front_contact_patch = (front_wheel_pos - vec(0, self.front_wheel.radius, 0))
         
         # rear braking can never induce a front flip, it will only ever cause rear to slip into Kf
         if checkToFlip:
@@ -153,9 +137,9 @@ class Frame():
 
             if ratio > (1/static_friction_constant):
                 # sum of all torques on system can only be used when the front wheel is locked, else any torque (friction on front) will angular accelerate JUST the wheel
-                torque_from_front_friction = cross(self.visual.pos - (self.front_wheel.sphere.pos - vec(0, self.front_wheel.radius, 0)),vec(-applied_friction_force_on_front_wheel,0,0))
+                torque_from_front_friction = cross(self.visual.pos - (front_wheel_pos - vec(0, self.front_wheel.radius, 0)),vec(-applied_friction_force_on_front_wheel,0,0))
                 # nf is now 100%
-                torque_from_N_f = cross(self.visual.pos - (self.front_wheel.sphere.pos - vec(0, self.front_wheel.radius, 0)), vec(0, g * self.total_mass,0) ) 
+                torque_from_N_f = cross(self.visual.pos - (front_wheel_pos - vec(0, self.front_wheel.radius, 0)), vec(0, g * self.total_mass,0) ) 
                 sum_of_all_torques_on_system = torque_from_front_friction + torque_from_N_f
                 
                 angulara = sum_of_all_torques_on_system / self.rotational_inertia
@@ -164,6 +148,15 @@ class Frame():
             else:
                 isFrontSliding = True
                 
+        if not isFrontSliding and self.theta.z < 0 and self.omega.mag == 0: # means stopped in the air, start rotating back to normal
+            # then, weight applies torque BACK
+            torque_from_weight = -1 * cross(self.visual.pos - front_wheel_pos, vec(0, g * (self.total_mass - wheel_weight),0) ) 
+            sum_of_all_torques_on_system = torque_from_weight
+            
+            angulara = sum_of_all_torques_on_system / self.rotational_inertia
+            change_in_omega = angulara * dt
+            self.omega = self.omega + change_in_omega
+        
         # change texture
         if not isBackSliding and not isFrontSliding:
             self.visual.texture = {'file': "https://i.imgur.com/R7ZDJsv.jpeg", 'place': ['all']} 
@@ -200,12 +193,11 @@ class Frame():
             
 
         if abs(self.theta.z * (180 / pi)) > 180:
-            alert("You flipped over!")
             running = False
 
         
 bike_speed_kmh = 30 # kmh
-myframe = Frame(vec(0,0.5,-0.001), bike_speed_kmh, 80, 1, 0.5)
+myframe = Frame(vec(0,1,-0.001), bike_speed_kmh, 80, 1, 0.5)
 scene.camera.pos=vector(8, 5, 12)
 
 scene.background = vector(0.11, 0.094, 0.212)
