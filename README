@@ -36,3 +36,8 @@ Web VPython 3.2
 #    (by pressing the front enough times or holding down the front brake button)
 # 2. AND the coefficient of static friction must be high enough 
 #    (if it isn't, the front wheel will simply slide instead)
+
+# Note: The sliders are all moveable while the simulation is running because 
+# a bike rider may adjust their weight distribution (and thus COM) by moving 
+# their body back/forwards on the bike, and a rider may run over a puddle at any time 
+# which will change the friction coefficients.
