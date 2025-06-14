@@ -27,6 +27,12 @@ Web VPython 3.2
 #These impulses last 0.25 seconds and can be stacked on top of each other (ie. 
 #pressing f repeatedly will increase the braking force applied to the front 
 #wheel). Initially, we said we would use functions and sliders to control these 
-#variables, but we simplified this to pressing buttons per Ms. Sharaf’s 
-#suggestion after we had submitted the final project proposal.
+#variables, but, after recieving feedback, we simplified this to tapping 
+#buttons, which allows the user to control the time and intensity of braking in
+#a discretized manner. 
 
+# To flip the bike (forwards), two conditions must be true. 
+# 1. the user must brake hard enough on the front 
+#    (by pressing the front enough times or holding down the front brake button)
+# 2. AND the coefficient of static friction must be high enough 
+#    (if it isn't, the front wheel will simply slide instead)
